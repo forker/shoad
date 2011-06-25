@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:lang="http://www.springframework.org/schema/lang"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:s="http://www.springframework.org/schema/security"
+
+       xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+          http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+          http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+          http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang-3.0.xsd
+          http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+          http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd
+          http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd">
+       
+    <context:annotation-config />
+     
+       
+    <s:http>
+        <s:intercept-url pattern="/*" access="ROLE_ADMINISTRATOR" />
+        <s:form-login />
+        <s:logout />
+    </s:http>
+
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="location" value="/WEB-INF/ldap.properties"/>
+    </bean>
+
+    <s:authentication-manager>
+        <s:authentication-provider ref='secondLdapProvider' />
+    </s:authentication-manager>
+
+
+    <!-- Traditional Bean version of the same configuration -->
+
+    <!-- This bean points at the embedded directory server created by the ldap-server element above  -->
+    <bean id="contextSource" class="org.springframework.security.ldap.DefaultSpringSecurityContextSource">
+        <constructor-arg value="${ldap.url}"/>
+    </bean>
+
+    <bean id="secondLdapProvider" class="org.archone.vhd.authentication.StricLdapAuthenticationProvider">
+        <constructor-arg>
+            <bean class="org.springframework.security.ldap.authentication.BindAuthenticator">
+                <constructor-arg ref="contextSource" />
+                <property name="userSearch">
+                    <bean id="userSearch" class="org.archone.vhd.authentication.StrictLdapUserSearch">
+                        <constructor-arg index="0" value="ou=users"/>
+                        <constructor-arg index="1" value="(uid={0})"/>
+                        <constructor-arg index="2" ref="contextSource" />
+                    </bean>
+                </property>
+            </bean>
+        </constructor-arg>
+        <constructor-arg>
+            <bean class="org.springframework.security.ldap.userdetails.DefaultLdapAuthoritiesPopulator">
+                <constructor-arg ref="contextSource" />
+                <constructor-arg value="" />
+                <property name="groupSearchFilter" value="(uniqueMember={0})"/>
+                <property name="rolePrefix" value="ROLE_"/>
+                <property name="searchSubtree" value="true"/>
+                <property name="convertToUpperCase" value="true"/>
+            </bean>
+        </constructor-arg>
+        <property name="userDetailsContextMapper" ref="userAttrsContextMapper"/>
+    </bean>
+
+    <bean id="userAttrsContextMapper" class="org.archone.vhd.authentication.UserAttrsContextMapping" >
+        <constructor-arg ref="contextSource" />
+    </bean>
+    
+    <bean id="operationalLdapTemplate" class="org.springframework.ldap.core.LdapTemplate" >
+        <constructor-arg ref="contextSource" />    
+    </bean>
+    
+    <bean id="dnHelper" class="org.archone.vhd.model.NameHelperImpl" >
+        <constructor-arg index="0" value="ou=users" /> 
+        <constructor-arg index="1" value="ou=groups" /> 
+    </bean>
+    
+</beans>
