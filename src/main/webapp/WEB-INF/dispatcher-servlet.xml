@@ -23,7 +23,8 @@
     <mvc:annotation-driven />
     <context:component-scan base-package="org.archone.vhd.controller"></context:component-scan>
        
-       
+    <mvc:resources mapping="/js/*" location="/"/>
+    <mvc:resources mapping="/css/*" location="/"/>
 
     <bean id="rpcService" class="org.archone.vhd.rpc.RpcServiceImpl" init-method="init" >
         <property name="actionClasses">

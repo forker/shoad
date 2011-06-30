@@ -84,4 +84,8 @@
         <constructor-arg index="1" value="ou=groups" /> 
     </bean>
     
+    <bean id="displayAttributeHelper" class="org.archone.vhd.model.DisplayAttributeHelperImpl" init-method="init">
+        <constructor-arg value="/WEB-INF/display-attributes.json" /> 
+    </bean>
+    
 </beans>

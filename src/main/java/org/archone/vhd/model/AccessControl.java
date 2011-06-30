@@ -29,7 +29,7 @@ public class AccessControl {
         List<String> groups = basicUser.getGroups();
         
         for (String group : groups) {
-            if (GroupDn.isAdminGroupId(group)) {
+            if (group != null && GroupDn.isAdminGroupId(group)) {
                 adminDomains.add(dnHelper.newGroupDnFromId(group).getDomain());
             }
         }

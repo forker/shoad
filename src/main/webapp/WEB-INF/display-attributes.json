@@ -1,0 +1,44 @@
+[
+{
+    "ldapName": "uid",
+    "apiName" : "shortUid",
+    "displayName" : "Short User Id",
+    "type" : "string",
+    "access" : "userView"
+},
+{
+    "ldapName": "suad-accountLocked",
+    "apiName" : "locked",
+    "displayName" : "Account Locked",
+    "type" : "boolean",
+    "access" : "userView"
+},
+{
+    "ldapName": "suad-accountSuspended",
+    "apiName" : "suspended",
+    "displayName" : "Account Suspended",
+    "type" : "boolean",
+    "access" : "userView"
+},
+{
+    "ldapName": "cn",
+    "apiName" : "fullName",
+    "displayName" : "Full Name",
+    "type" : "string",
+    "access" : "userView userEdit"
+},
+{
+    "ldapName": "mail",
+    "displayName" : "Email",
+    "type" : "string",
+    "access" : "userView",
+    "multiValue" : true
+},
+{
+    "ldapName": "sn",
+    "apiName": "lastName",
+    "displayName" : "Last name",
+    "type" : "string",
+    "access" : "userEdit"
+}
+]
