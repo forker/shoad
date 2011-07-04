@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.ldap.core.DirContextAdapter;
-import org.springframework.util.Assert;
 
 /**
  *
@@ -27,8 +26,9 @@ public class DisplayAttributeHelperImpl implements DisplayAttributeHelper {
     @Autowired
     private ApplicationContext applicationContext;
     private String configPath;
-    private List<HashMap<String, Object>> displayAttributeList;
-    private HashMap<String, HashMap> apiNameIndex = new HashMap<String, HashMap>();
+    private List<DisplayAttribute> displayAttributeList;
+    private HashMap<String, DisplayAttribute> apiNameIndex = new HashMap<String, DisplayAttribute>();
+    private HashMap<String, DisplayAttribute> ldapNameIndex = new HashMap<String, DisplayAttribute>();
 
     public DisplayAttributeHelperImpl(String configPath) {
         this.configPath = configPath;
@@ -38,20 +38,20 @@ public class DisplayAttributeHelperImpl implements DisplayAttributeHelper {
         Resource r = applicationContext.getResource(this.configPath);
 
         FileReader attrDefs = new FileReader(r.getFile());
-        JSONDeserializer<List> jd = new JSONDeserializer<List>();
-        this.displayAttributeList = jd.deserialize(attrDefs);
+        JSONDeserializer jd = new JSONDeserializer().use(null, LinkedList.class ).use( "values", DisplayAttribute.class );
+        this.displayAttributeList = (List<DisplayAttribute>) jd.deserialize(attrDefs);
         
         
-        for (HashMap<String, Object> displayAttribute : displayAttributeList) {
+        for (DisplayAttribute displayAttribute : displayAttributeList) {
 
-            if (displayAttribute.get("access") != null && ((String) displayAttribute.get("access")).contains("user")) {
+            if (displayAttribute.getAccess() != null && displayAttribute.getAccess().contains("user")) {
                 
-                HashMap<String, Object> attrDef = (HashMap<String, Object>) displayAttribute.clone();
+                if(displayAttribute.getApiName() == null) {
+                    displayAttribute.setApiName(displayAttribute.getLdapName());
+                }
                 
-                
-                String apiName = (String) (attrDef.get("apiName") != null ? attrDef.get("apiName") : attrDef.get("ldapName"));
-                
-                this.apiNameIndex.put(apiName, attrDef);
+                this.apiNameIndex.put(displayAttribute.getApiName(), displayAttribute);
+                this.ldapNameIndex.put(displayAttribute.getLdapName(), displayAttribute);
             }
         }
         
@@ -59,25 +59,13 @@ public class DisplayAttributeHelperImpl implements DisplayAttributeHelper {
     }
 
     @Override
-    public HashMap<String, Object> getDisplayAttrDefinitionListForUser() {
-        HashMap<String, Object> attrDefMap = new HashMap<String, Object>();
+    public HashMap<String, DisplayAttribute> getDisplayAttrDefinitionListForUser() {
+        HashMap<String, DisplayAttribute> attrDefMap = new HashMap<String, DisplayAttribute>();
 
-        for (HashMap<String, Object> displayAttribute : displayAttributeList) {
+        for (DisplayAttribute displayAttribute : displayAttributeList) {
 
-            if (displayAttribute.get("access") != null && ((String) displayAttribute.get("access")).contains("user")) {
-                
-                HashMap<String, Object> attrDef = (HashMap<String, Object>) displayAttribute.clone();
-                
-                
-                String apiName = (String) (attrDef.get("apiName") != null ? attrDef.get("apiName") : attrDef.get("ldapName"));
-                
-                /*
-                 * 
-                 */
-                //attrDef.remove("ldapName");
-                //attrDef.remove("access");
-                
-                attrDefMap.put(apiName, attrDef);
+            if (displayAttribute.getAccess() != null && displayAttribute.getAccess().contains("user")) {
+                attrDefMap.put(displayAttribute.getApiName(), displayAttribute);
             }
         }
 
@@ -87,14 +75,12 @@ public class DisplayAttributeHelperImpl implements DisplayAttributeHelper {
     @Override
     public HashMap<String, Object> getUserAttributeMapForUser(DirContextAdapter dca) {
         HashMap<String, Object> user = new HashMap<String, Object>();
-        for (HashMap<String, Object> displayAttribute : displayAttributeList) {
-            if (displayAttribute.get("access") != null && ((String) displayAttribute.get("access")).contains("user")) {
-                String ldapName = (String) displayAttribute.get("ldapName");
-                Assert.notNull(ldapName, "Malformed or incomplete entry definition");
+        for (DisplayAttribute displayAttribute : displayAttributeList) {
+            if (displayAttribute.getAccess() != null && displayAttribute.getAccess().contains("user")) {
+                String ldapName = displayAttribute.getLdapName();
+                String apiName = displayAttribute.getApiName();
 
-                String apiName = displayAttribute.get("apiName") != null ? (String) displayAttribute.get("apiName") : ldapName;
-
-                if (displayAttribute.get("multiValue") != null && (Boolean) displayAttribute.get("multiValue") == true) {
+                if (displayAttribute.getMultiValue() == true) {
                     Object[] attrs = dca.getObjectAttributes(ldapName);
                     if (attrs != null) {
                         user.put(apiName, attrs);
@@ -110,18 +96,39 @@ public class DisplayAttributeHelperImpl implements DisplayAttributeHelper {
         return user;
     }
     
+    @Override
     public HashMap<String, Object> apiToLdapAttrNames(HashMap<String, Object> attrMap) {
         HashMap<String, Object> ldapAttrMap = new HashMap<String, Object>();
         for(Entry<String, Object> entry : attrMap.entrySet()) {
             if(this.apiNameIndex.get(entry.getKey()) != null) {
-                ldapAttrMap.put( (String) this.apiNameIndex.get(entry.getKey()).get("ldapName") , entry.getValue());
+                ldapAttrMap.put( (String) this.apiNameIndex.get(entry.getKey()).getLdapName() , entry.getValue());
             }
         }
         
         return ldapAttrMap;
     }
     
-    public HashMap<String, HashMap> getApiNameIndexedAttrDef() {
+    @Override
+    public String getApiName(String ldapName) {
+        return (String) this.ldapNameIndex.get(ldapName).getApiName();
+    }
+    
+    @Override
+    public String getLdapName(String apiName) {
+        return (String) this.apiNameIndex.get(apiName).getLdapName();
+    }
+    
+    @Override
+    public DisplayAttribute byApiName(String apiName) {
+        return this.apiNameIndex.get(apiName);
+    }
+
+    @Override
+    public DisplayAttribute byLdapName(String ldapName) {
+        return this.ldapNameIndex.get(ldapName);
+    }    
+    
+    public HashMap<String, DisplayAttribute> getApiNameIndexedAttrDef() {
         return this.apiNameIndex;
     }
     

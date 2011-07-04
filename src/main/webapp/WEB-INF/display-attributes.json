@@ -24,6 +24,7 @@
     "ldapName": "cn",
     "apiName" : "fullName",
     "displayName" : "Full Name",
+    "mustHave" : true,
     "type" : "string",
     "access" : "userView userEdit"
 },
@@ -32,11 +33,13 @@
     "displayName" : "Email",
     "type" : "string",
     "access" : "userView",
-    "multiValue" : true
+    "multiValue" : true,
+    "unique" : "domain"
 },
 {
     "ldapName": "sn",
     "apiName": "lastName",
+    "mustHave" : true,
     "displayName" : "Last name",
     "type" : "string",
     "access" : "userEdit"

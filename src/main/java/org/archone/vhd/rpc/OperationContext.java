@@ -5,6 +5,8 @@
 package org.archone.vhd.rpc;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import javax.servlet.http.HttpSession;
 
 /**
@@ -15,6 +17,7 @@ public class OperationContext {
     
     private HttpSession session;
     private HashMap<String, Object> params;
+    private List<String> errors = new LinkedList<String>();
 
     public OperationContext(HttpSession session, HashMap<String, Object> params) {
         this.session = session;
@@ -47,6 +50,18 @@ public class OperationContext {
      */
     public void setSession(HttpSession session) {
         this.session = session;
+    }
+    
+    public void pushError(String error) {
+        this.errors.add(error);
+    }
+    
+    public List<String> getErrors() {
+        return this.errors;
+    }
+    
+    public boolean hasErrors() {
+        return this.errors.size() > 0;
     }
     
 }

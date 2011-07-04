@@ -18,6 +18,8 @@ import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
+import javax.naming.directory.BasicAttribute;
+import javax.naming.directory.BasicAttributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
 import javax.naming.directory.SearchControls;
@@ -26,6 +28,8 @@ import org.archone.vhd.authentication.BasicUser;
 import org.archone.vhd.rpc.OperationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ldap.core.DirContextAdapter;
+import org.springframework.ldap.filter.EqualsFilter;
+import org.springframework.ldap.filter.OrFilter;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.Assert;
 
@@ -39,6 +43,8 @@ public class LdapModel {
     private NameHelper nameHelper;
     @Autowired
     private DisplayAttributeHelper displayAttributeHelper;
+    @Autowired
+    private SUADConfiguration ldapConfiguration;
 
     public BasicUser getBasicUser() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -212,7 +218,7 @@ public class LdapModel {
     }
 
     @RPCAction(name = "attr.defs.get")
-    public HashMap<String, Object> getAttributeDefinition(OperationContext opContext) throws NamingException {
+    public HashMap<String, DisplayAttribute> getAttributeDefinition(OperationContext opContext) throws NamingException {
         return displayAttributeHelper.getDisplayAttrDefinitionListForUser();
     }
 
@@ -223,6 +229,109 @@ public class LdapModel {
         Assert.notNull(userId, "userId can't be null in this request");
 
         UserDn userDn = nameHelper.newUserDnFromId(userId);
+        DomainDn domainDn = nameHelper.newDomainDnFromDomain(userDn.getDomain());
+        BasicUser basicUser = getBasicUser();
+        AccessControl accessControl = new AccessControl(nameHelper);
+
+        HashMap<String, Object> response = new HashMap<String, Object>();
+
+        /*
+         * Access Control Start
+         * TODO: modify to let unprivileged access
+         */
+
+        accessControl.validateAccess(basicUser, userDn.getDomain());
+
+        /*
+         * Access Control End
+         */
+
+        DirContext dirContext = basicUser.getDirContext();
+        DirContextAdapter dca = (DirContextAdapter) dirContext.lookup(userDn);
+
+        HashMap<String, Object> modValues = displayAttributeHelper.apiToLdapAttrNames((HashMap<String, Object>) opContext.getParams().get("mod"));
+        HashMap<String, Object> addValues = displayAttributeHelper.apiToLdapAttrNames((HashMap<String, Object>) opContext.getParams().get("add"));
+        HashMap<String, Object> removeValues = displayAttributeHelper.apiToLdapAttrNames((HashMap<String, Object>) opContext.getParams().get("remove"));
+        List<String> removeAttrs = (List<String>) opContext.getParams().get("removeAttr");
+
+        IntegrityCheckUtil integrityCheckUtil = new IntegrityCheckUtil(dirContext);
+        HashMap<String, String> busyValues = new HashMap<String, String>();
+
+        LinkedList<ModificationItem> removeAttrList = new LinkedList<ModificationItem>();
+        if (removeAttrs != null) {
+            for (String apiName : removeAttrs) {
+                BasicAttribute attr = new BasicAttribute(displayAttributeHelper.getLdapName(apiName));
+                ModificationItem mi = new ModificationItem(DirContext.REMOVE_ATTRIBUTE, attr);
+                removeAttrList.add(mi);
+            }
+        }
+
+        for (Entry<String, Object> entry : modValues.entrySet()) {
+
+            if (displayAttributeHelper.byLdapName(entry.getKey()).isDomainUnique()) {
+                if (!integrityCheckUtil.isUnique(domainDn, entry.getKey(), (String) entry.getValue())) {
+                    busyValues.put(entry.getKey(), (String) entry.getValue());
+                }
+            }
+
+            dca.setAttributeValue(entry.getKey(), entry.getValue());
+        }
+
+        for (Entry<String, Object> entry : removeValues.entrySet()) {
+            if (entry.getValue() instanceof List) {
+                for (Object value : (List) entry.getValue()) {
+                    dca.removeAttributeValue(entry.getKey(), value);
+                }
+            } else {
+                dca.removeAttributeValue(entry.getKey(), entry.getValue());
+            }
+        }
+
+        for (Entry<String, Object> entry : addValues.entrySet()) {
+            if (entry.getValue() instanceof List) {
+
+                for (Object value : (List) entry.getValue()) {
+
+                    if (displayAttributeHelper.byLdapName(entry.getKey()).isDomainUnique()) {
+                        if (!integrityCheckUtil.isUnique(domainDn, entry.getKey(), (String) value)) {
+                            busyValues.put(entry.getKey(), (String) value);
+                        }
+                    }
+
+                    dca.addAttributeValue(entry.getKey(), value);
+                }
+            } else {
+
+                if (displayAttributeHelper.byLdapName(entry.getKey()).isDomainUnique()) {
+                    if (!integrityCheckUtil.isUnique(domainDn, entry.getKey(), (String) entry.getValue())) {
+                        busyValues.put(entry.getKey(), (String) entry.getValue());
+                    }
+                }
+
+                dca.addAttributeValue(entry.getKey(), entry.getValue());
+            }
+        }
+
+        if (busyValues.size() > 0) {
+            response.put("success", false);
+            response.put("busyValues", busyValues);
+        } else {
+            dirContext.modifyAttributes(userDn, removeAttrList.toArray(new ModificationItem[0]));
+            dirContext.modifyAttributes(userDn, dca.getModificationItems());
+            response.put("success", true);
+        }
+
+        return response;
+    }
+
+    @RPCAction(name = "user.membership.get")
+    public HashMap<String, Object> listMermbershipGroups(OperationContext opContext) throws NamingException {
+
+        String userId = (String) opContext.getParams().get("userId");
+        Assert.notNull(userId, "userId can't be null in this request");
+
+        UserDn userDn = nameHelper.newUserDnFromId(userId);
+
         BasicUser basicUser = getBasicUser();
         AccessControl accessControl = new AccessControl(nameHelper);
 
@@ -236,25 +345,141 @@ public class LdapModel {
          * Access Control End
          */
 
+        DomainDn domainDn = nameHelper.newDomainDnFromDomain(userDn.getDomain());
+
+        SearchControls controls = new SearchControls();
+        controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
         DirContext dirContext = basicUser.getDirContext();
-        DirContextAdapter dca = (DirContextAdapter) dirContext.lookup(userDn);
-        
-        HashMap<String, Object> attrMod = displayAttributeHelper.apiToLdapAttrNames( (HashMap<String, Object>) opContext.getParams().get("mod"));
-        
-        for(Entry<String, Object> entry : attrMod.entrySet()) {
-            
-            if(entry.getValue() instanceof List) {
-                dca.setAttributeValues(entry.getKey(), ((List<String>) entry.getValue()).toArray());
-            } else if(entry.getValue() instanceof Object) {
-                dca.setAttributeValue(entry.getKey(), entry.getValue());
+
+        NamingEnumeration<SearchResult> searchResults = dirContext.search(nameHelper.getGroupsBaseDn(nameHelper.newDomainDnFromDomain(userDn.getDomain())), "(uniqueMember=" + userDn.toString() + ")", controls);
+
+        List<HashMap<String, Object>> groups = new LinkedList<HashMap<String, Object>>();
+        while (searchResults.hasMore()) {
+            SearchResult sr = searchResults.next();
+            if (nameHelper.isGroupDn(sr.getNameInNamespace().toLowerCase())) {
+                HashMap<String, Object> group = new HashMap<String, Object>();
+                group.put("groupId", nameHelper.newGroupDn(sr.getNameInNamespace().toLowerCase()).getAsGroupId());
+                groups.add(group);
             }
         }
-        
-        dirContext.modifyAttributes(userDn, dca.getModificationItems());
-        
+
         HashMap<String, Object> response = new HashMap<String, Object>();
-        response.put("success", true);
-        
+        response.put("groups", groups);
+
         return response;
     }
+
+    @RPCAction(name = "user.membership.mod")
+    public HashMap<String, Object> modifyMermbershipGroups(OperationContext opContext) throws NamingException {
+
+        String userId = (String) opContext.getParams().get("userId");
+        Assert.notNull(userId, "userId can't be null in this request");
+
+        UserDn userDn = nameHelper.newUserDnFromId(userId);
+
+        BasicUser basicUser = getBasicUser();
+        AccessControl accessControl = new AccessControl(nameHelper);
+
+        /*
+         * Access Control Start
+         */
+
+        accessControl.validateAccess(basicUser, userDn.getDomain());
+
+        /*
+         * Access Control End
+         */
+
+        DomainDn domainDn = nameHelper.newDomainDnFromDomain(userDn.getDomain());
+
+        SearchControls controls = new SearchControls();
+        controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+        DirContext dirContext = basicUser.getDirContext();
+
+        List<String> addGroups = (List<String>) opContext.getParams().get("add");
+        for (String group : addGroups) {
+            GroupDn groupDn = nameHelper.newGroupDnFromId(group);
+            DirContextAdapter groupDca = (DirContextAdapter) dirContext.lookup(groupDn);
+            groupDca.addAttributeValue("uniqueMember", userDn.toString());
+            dirContext.modifyAttributes(groupDn, groupDca.getModificationItems());
+        }
+
+
+        List<String> removeGroups = (List<String>) opContext.getParams().get("remove");
+        for (String group : removeGroups) {
+            GroupDn groupDn = nameHelper.newGroupDnFromId(group);
+            DirContextAdapter groupDca = (DirContextAdapter) dirContext.lookup(groupDn);
+            groupDca.removeAttributeValue("uniqueMember", userDn.toString());
+            dirContext.modifyAttributes(groupDn, groupDca.getModificationItems());
+        }
+
+        HashMap<String, Object> response = new HashMap<String, Object>();
+        response.put("success", true);
+
+
+        return response;
+    }
+    
+    @RPCAction(name = "user.add")
+    public HashMap<String, Object> addUser(OperationContext opContext) throws NamingException {
+        String userId = (String) opContext.getParams().get("userId");
+        Assert.notNull(userId, "userId can't be null in this request");
+
+        UserDn userDn = nameHelper.newUserDnFromId(userId);
+
+        BasicUser basicUser = getBasicUser();
+        AccessControl accessControl = new AccessControl(nameHelper);
+
+        /*
+         * Access Control Start
+         */
+
+        accessControl.validateAccess(basicUser, userDn.getDomain());
+
+        /*
+         * Access Control End
+         */
+
+        DomainDn domainDn = nameHelper.newDomainDnFromDomain(userDn.getDomain());
+        DirContext dirContext = basicUser.getDirContext();
+        
+        Attributes attrs = new BasicAttributes();
+        BasicAttribute ocattr = new BasicAttribute("objectclass");
+        for(String objectClassName : ldapConfiguration.getUserObjectClassList()) {
+            ocattr.add(objectClassName);
+        }
+        attrs.put(ocattr);
+        
+        for(DisplayAttribute displayAttribute : displayAttributeHelper.getApiNameIndexedAttrDef().values()) {
+            Object attrValue = opContext.getParams().get(displayAttribute.getApiName());
+            
+            if(attrValue != null) {
+                BasicAttribute attr = new BasicAttribute( displayAttribute.getLdapName() );
+                
+                if(attrValue instanceof List) {
+                    for(Object attrOneValue : (List) attrValue) {
+                        attr.add(attrOneValue);
+                    }
+                } else {
+                    attr.add(attrValue);
+                }
+                
+                attrs.put(attr);
+                
+            } else if(displayAttribute.isMustHave()) {
+                throw new RuntimeException(displayAttribute.getApiName() + " is required!");
+            }
+            
+        }
+        
+        
+        dirContext.bind(userDn, null, attrs);
+        
+        HashMap<String, Object> response = new HashMap<String, Object>();
+        
+        response.put("success", true);
+
+        return response;
+    }
+    
 }
