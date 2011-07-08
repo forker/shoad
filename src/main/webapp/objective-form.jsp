@@ -32,12 +32,15 @@
                     active : "Active",
                     pseudos : "Pseudos"
                 };
-                
-                
+                               
                 $("#target").mapenform(
                     {source : lenin,
                     getLabel : function(key) { return keyDef[key] },
-                    callback : function(newMap) { alert(JSON.stringify(newMap.getData())); }
+                    callback : function(newMap) { 
+                        for(var key in newMap.getData()) {
+                            
+                        }
+                    }
                 });
                 
             });

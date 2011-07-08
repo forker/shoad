@@ -22,34 +22,35 @@
             (function($) {
                         
                 var UserEditUI = function(elementId) {
-                    this.title = "Edit User";
-                    this.buttonText = "Update";
+                    this.title = "Update";
                     this.root = $("div.template.user-edit-dialog").clone().attr("id", elementId).appendTo($(document.body));
-                    this.showMembershipEdit = true;
+                    this.submit = this.root.find("button.user-edit-submit");
+                    this.membershipEditRoot = this.root.find("div.user-membership-edit");
+                    this.addAttrSelect = this.root.children("select");
+                    this.membershipEditSelect = this.root.find("div.user-membership-edit select");
+                    this.showMembershipEditAnchor = this.root.find("div.user-membership-edit-wrap a");
+                    this.membershipEditSubmit = this.membershipEditRoot.find("button.user-membership-edit-submit")
+                    
+                    this.getControl = function(name) {
+                        switch(name) {
+                            case "attr-value-del" :
+                                return this.root.find("a.attribute-value-del");
+                            case "attr-lines" :
+                                return this.root.children("table").children("tbody").children("tr");
+                        };
+                    };
                     
                     this.mode = function(mode) {
                         if(mode == "edit") {
                             this.title = "Edit User";
-                            this.buttonText = "Update";
-                            this.root.find("div.user-membership-edit-ui-wrap").show();
-                        } else if(mode == "create") {
+                            this.submit.text("Update");
+                            this.showMembershipEditAnchor.show();
+                        } else {
                             this.title = "Create User";
-                            this.buttonText = "Create";
-                            this.root.find("div.user-membership-edit-ui-wrap").hide();
+                            this.submit.text("Create User");
+                            this.showMembershipEditAnchor.hide();
                         }
-                        this.root.find("div.user-edit-ui > button").text(this.buttonText);                            
                     };
-                    
-                    this.start = function(data) {
-                        $(this.root).find(".user-edit-ui").mapenform(data);
-                    };
-                    
-                    this.showNotice = function(message, success) {
-                        var noticeClass = success ? "success" : "error";
-                        var statusLine = this.root.find(".status-line");
-                        statusLine.empty()
-                        $("<span/>").addClass("status-text").addClass(noticeClass).text(message).appendTo(statusLine).delay(2000).fadeOut(200);
-                    }
                     
                     
                 };
@@ -82,7 +83,21 @@
                     showEntryId : function(fullUserId) {
                         return showFullEntryId ? fullUserId.toString() : fullUserId.split("@")[0];
                     },
-                   
+                    
+                    newAttributeValueInput : function(value) {
+                        return $("<input size=\"30\" type=\"text\" value=\"" + value + "\" /><a class=\"attribute-value-del\" href=\"javascript:;\" title=\"delete\">[-]</a><br/>");
+                    },
+                    
+                    newAttributeValueCheckbox : function() {
+                        return $("<input type=\"checkbox\" />");
+                    },
+                    
+                    newAddAttributeValueLink : function() {
+                        return $("<a class=\"add-attribute-value\" href=\"javascript:;\" >Add more..</a>").click(function() {
+                            methods.newAttributeValueInput("").insertBefore($(this));
+                        });
+                    },
+                    
                     addGroupToAddList : function(userMembershipEditRoot, groupId) {
                         $("<option/>").val(groupId).text( methods.showEntryId( groupId ) ).appendTo(userMembershipEditRoot.children("select"));
                     },
@@ -93,10 +108,38 @@
                             methods.addGroupToAddList(userMembershipEditRoot, $(this).parent("td").parent("tr").attr("for") );
                             $(this).parent("td").parent("tr").remove();
                         });
+                    },
+
+                    addAttribute : function(elData, key, isNew) {
+                        var userEditRoot = elData.get("userEditRoot");
+                        var user = elData.get("user");
+
+                        userEditRoot.children("table").append("<tr for=\"" + key + "\"><td style=\"white-space: nowrap;\">" + attrDefs.get(key).displayName + ":</td><td></td></tr>")
+                        var lastTd = userEditRoot.children("table").children("tbody").children("tr:last").children("td:last");
+                        if(attrDefs.get(key).multiValue == true) {
+                            if(isNew) {
+                                lastTd.append(this.newAttributeValueInput(""));
+                            } else {
+                                for(var i in user.getAttr(key)) {
+                                    lastTd.append(this.newAttributeValueInput( user.getAttr(key)[i] ));
+                                }
+                            }
+                            this.newAddAttributeValueLink().appendTo(lastTd);
+                        } else if(attrDefs.get(key).type == "boolean") {
+                            this.newAttributeValueCheckbox().prop("checked", bool(user.getAttr(key)) ).appendTo(lastTd);
+                            lastTd.append("<a class=\"attribute-value-del\" href=\"javascript:;\" title=\"delete\">[-]</a>");
+                        } else {
+                            if(isNew) {
+                                lastTd.append(this.newAttributeValueInput(""));
+                            } else {
+                                lastTd.append(this.newAttributeValueInput(user.getAttr(key)));
+                            }
+                        }
                     }
                 };
 
                 $.fn.extend({
+                    
                     
                     loadGroups : function(groups) {
                         allGroups = groups;
@@ -112,21 +155,69 @@
                             return this;
                         }
                     
-                        var isNewUser = (action == "create");
-                        
-                        var user = $(this).first()[0];
+                        var isNewUser = (action == "create"); 
+
+                        $(this).each(function() {
+                            var user = this;
                             
-                        var elementId = user.getUserId() + "-"  + guid();
-                        var userEditUI = new UserEditUI(elementId);
-                        userEditUI.mode(action);
-                        userEditUI.start({ source : user.getAttrs(),
-                            schema : attrDefs,
-                            sbTitle : userEditUI.buttonText,
-                            callback : function(newMap) {
+                            var elementId = user.getUserId() + "-"  + guid();
+                            var userEditUI = new UserEditUI(elementId);
+                            
+                            var elData = data.put(user.getUserId(), new Map());
+                            elData.put("user", user);
+                            elData.put("elementId", elementId);
+                            elData.put("userEditRoot", userEditUI.root);
+                                
+                            for(var key in user.getAttrs().getAsJsObj()) {
+                                methods.addAttribute(elData, key);
+                            }
+                                
+                            for(var key in attrDefs.getAsJsObj()) {
+                                if(!user.hasAttr(key)) {
+                                    $("<option/>").val(key).text(attrDefs.get(key).displayName).appendTo(userEditUI.addAttrSelect);
+                                }
+                            }
+                            
+                            userEditUI.getControl("attr-value-del").click(function() {
+                                $(this).prev("input").remove();
+                                $(this).next("br").remove();
+                                if($(this).siblings("input").length == 0) {
+                                    $(this).parent("td").parent("tr").remove();
+                                } else {
+                                    $(this).remove();
+                                }
+                            });
+                            
+                            userEditUI.mode(isNewUser ? "create" : "edit");
+
+                            userEditUI.submit.click(function() {
                                 if(isNewUser) {
-                                    user.userId = newMap.get("shortUid") + "@users.example.com";
+                                    var request = new Map();
                                     
-                                    var request = $.extend(true, {}, newMap);
+                                    userEditUI.getControl("attr-lines").each(function() {
+                                        var apiKey = $(this).attr("for");
+                                        var valueInput = $(this).find("td:last input");
+                                                                   
+                                        if(attrDefs.get(apiKey).multiValue == true) {
+                                            var newValArray = [];
+                                            valueInput.each(function() {
+                                                newValArray.push($(this).val());
+                                            });
+                            
+                                            request.put(apiKey, newValArray);
+                                            
+                                        } else if(attrDefs.get(apiKey).type == "boolean" ) {
+                                            var newVal = valueInput.attr("checked") == "checked" ? "true" : "false";
+                                            request.put(apiKey, newVal);
+                                        } else {
+                                            var newVal = valueInput.val();
+                                            request.put(apiKey, newVal);
+                                            
+                                            if(apiKey == "shortUid") {
+                                                user.userId = newVal + "@users.example.com";
+                                            }
+                                        }
+                                    });
                                     
                                     request.put("userId", user.getUserId());
 
@@ -135,11 +226,9 @@
                                         data : request.getAsJsObj(),
                                         callback : function(data) {
                                             var noticeText = data.success ? "Successfully Created" : "Create Failed";
-                                            userEditUI.showNotice( noticeText, data.success);
+                                            methods.showNotice(elData, noticeText, data.success);
                                             userEditUI.mode("edit");
                                             isNewUser = false;
-                                            
-                                            user.setAttrs(newMap);
                                         }
                                     });
                                     
@@ -151,15 +240,23 @@
                                     request.put("remove", new Map());
                         
                                     var beforeKeys = user.getAttrs().getKeys();
+                        
                                     var afterKeys = [];
-                                    
-                                    $.each(newMap.getData(), function(apiKey, value) {
+                                    userEditUI.getControl("attr-lines").each(function() {
+                                                     
+                            
+                                        var apiKey = $(this).attr("for");
+                                        var valueInput = $(this).find("td:last input");
                                         afterKeys.push(apiKey);
+                            
                                         if(attrDefs.get(apiKey).multiValue == true) {
-                                            var newValArray = value;
-                                            
+                                            var newValArray = [];
+                                            valueInput.each(function() {
+                                                newValArray.push($(this).val());
+                                            });
+                            
+                                    
                                             if(!user.hasAttr(apiKey) || typeof(user.getAttr(apiKey)) == "undefined") { user.setAttr(apiKey, []); }
-                                            
                                             if(!areArraysEqual(newValArray, user.getAttr(apiKey))) {
                                                 var arrDiff = new ArrayDiff(newValArray, user.getAttr(apiKey));
                                                 request.get("add").put( apiKey, arrDiff.firstOnly);
@@ -167,14 +264,14 @@
                                             }
                                 
                                         } else if(attrDefs.get(apiKey).type == "boolean" ) {
-                                            var newVal = value;
+                                            var newVal = valueInput.attr("checked") == "checked" ? "true" : "false";
                              
                                             if(newVal != user.getAttr(apiKey)) {
                                                 request.get("mod").put( apiKey, newVal);
                                             }
                                 
                                         } else {
-                                            var newVal = value;
+                                            var newVal = valueInput.val();
                             
                                             if(newVal != user.getAttr(apiKey)) {
                                                 request.get("mod").put( apiKey, newVal);
@@ -196,82 +293,78 @@
                                             removeAttr : request.get("removeAttr") },
                                         callback : function(data) {
                                             var noticeText = data.success ? "Successfully Updated" : "Update Failed";
-                                            userEditUI.showNotice(noticeText, data.success);
+                                            methods.showNotice(elData, noticeText, data.success);
                                         }
                                     });
                                 }
-                            }
-                        });
-                                                       
-                        userEditUI.mode(isNewUser ? "create" : "edit");
-                        
-                        
-                        userEditUI.root.dialog({
-                            close : function() {
-                                userEditUI.root.remove();
-                            },
-                            title : userEditUI.title,
-                            width : "auto",
-                            modal : true
-                        });
-                        
-                        userEditUI.root.find("a.user-edit-ui-remove").click(function() {
-                            rpcService.call({
-                                action : "user.remove",
-                                data : { userId : user.getUserId() },
-                                callback : function(data) {                       
-                                    if(data.success) {
-                                        userEditUI.root.remove();
+                                    
+                            });
+                                               
+                            userEditUI.membershipEditSelect.change(function() {
+                                methods.addGroup(userEditUI.membershipEditRoot, $(this).val());
+                                $(this).children("option:selected").remove();
+                            });
+                    
+                            userEditUI.addAttrSelect.change(function() {
+                                methods.addAttribute(elData, $(this).val(), true);
+                                $(this).children("option:selected").remove();
+                            });
+                    
+                            userEditUI.showMembershipEditAnchor.click(function() {
+                                $(this).hide();
+                                userEditUI.membershipEditRoot.show();
+                    
+                                rpcService.call({
+                                    action : "user.membership.get",
+                                    data : { userId : user.getUserId() },
+                                    callback : function(data) {
+                                    
+                                        user.setGroups([]);
+                                        $(data.groups).each(function() {
+                                            methods.addGroup(userEditUI.membershipEditRoot, this.groupId);
+                                            user.getGroups().push(this.groupId);
+                                        });
+                                
+                                        if(!areArraysEqual(allGroups, user.getGroups())) {
+                                            var arrDiff = new ArrayDiff(allGroups, user.getGroups());
+                                            $(arrDiff.firstOnly).each(function() {
+                                                methods.addGroupToAddList(userEditUI.membershipEditRoot, this);
+                                            });
+                                        }
                                     }
-                                }
+                                });
                             });
-                        });
                         
+                            userEditUI.membershipEditSubmit.click(function() {
+                                var newGroupSet = [];
+                                userEditUI.membershipEditRoot.children("table").children("tbody").children("tr").each(function() {
+                                    newGroupSet.push( $(this).attr("for") );
+                                });
                         
-                        userEditUI.root.find(".user-edit-ui-collapse-control").click(function() {
+                                if(!areArraysEqual(newGroupSet, user.getGroups())) {
+                                    var arrDiff = new ArrayDiff(newGroupSet, user.getGroups());
                             
-                            $(this).unbind("click");
-                            var nextDiv = $(this).next();
-                            
-                            rpcService.call({
-                                action : "user.membership.get",
-                                data : { userId : user.getUserId() },
-                                callback : function(data) {
-                                    user.setGroups([]);
-                                    $(data.groups).each(function() {
-                                        user.getGroups().push(this.groupId);
-                                    });
-                                    
-                                    nextDiv.show('slow');
-                                    
-                                    userEditUI.root.find(".user-membership-edit-ui").listenform({
-                                        membership : user.getGroups(),
-                                        available : allGroups,
-                                        getLabel : function(groupId) { return methods.showEntryId(groupId) },
-                                        callback : function(newGroupSet, oldGroupSet) {
-                                            if(!areArraysEqual(newGroupSet, oldGroupSet)) {
-                                                var arrDiff = new ArrayDiff(newGroupSet, oldGroupSet);
-                                                rpcService.call({
-                                                    action : "user.membership.mod",
-                                                    data : { userId : user.getUserId(), add : arrDiff.firstOnly, remove : arrDiff.secondOnly },
-                                                    callback : function(data) {
-                                                        var noticeText = data.success ? "Successfully Updated" : "Update Failed";
-                                                        userEditUI.showNotice(noticeText, data.success);
-                                                    }
-                                                });
-                                                        
-                                                user.setGroups(newGroupSet);
-                                            }
+                                    rpcService.call({
+                                        action : "user.membership.mod",
+                                        data : { userId : user.getUserId(), add : arrDiff.firstOnly, remove : arrDiff.secondOnly },
+                                        callback : function(data) {
+                                            var noticeText = data.success ? "Successfully Updated" : "Update Failed";
+                                            methods.showNotice(elData, noticeText, data.success);
                                         }
-                                    });
+                                    });                            
                                 }
                             });
-                            
-                            return false;
-                        }).next().hide();
                         
+                            userEditUI.root.dialog({
+                                close : function() {
+                                    userEditUI.root.remove();
+                                },
+                                title : userEditUI.title,
+                                width : "auto",
+                                modal : true
+                            });
                         
-                        
+                        });
                     }
                 });
 
@@ -296,27 +389,24 @@
                     var showEntryId = function(fullUserId) {
                         return false ? fullUserId.toString() : fullUserId.split("@")[0]
                     }
-                    
-                    displayDataTable = groupNavyDisplayTable.dataTable({
-                        "fnRowCallback": function( nRow, aData, iDisplayIndex ) {
-                            $(nRow).attr("id", aData[0]);
-                            $("td:eq(0)", nRow).text(showEntryId(aData[0]));
-                            return nRow;
-                        }
-                    });
-
-                    var addGroup = function(groupId) {
-                        groupNavySelector.append("<li id=\"" + groupId + "\" class=\"group-navy-ui-select-li\">" + showEntryId(groupId) + "</li>");
-                        allGroups.push(groupId);
-                    }
-
+                
+                
+                    //                rpcService.call({
+                    //                    action : "user.add",
+                    //                    data : { userId : "meganfox@users.example.com", fullName : "Megan Fox", lastName : "Fox" },
+                    //                    callback : function(data) {                       
+                    //                        alert(data.success);
+                    //                    }
+                    //                });
+                
                     rpcService.call({
                         action : "group.list",
                         data : { domain : "example.com" },
                         callback : function(data) {                       
                             groupNavySelector.append("<li id=\"all\" class=\"group-navy-ui-select-li\">All Users</li>");
                             $(data.groups).each(function(index, group) {
-                                addGroup(group.groupId);
+                                groupNavySelector.append("<li id=\"" + group.groupId + "\" class=\"group-navy-ui-select-li\">" + showEntryId(group.groupId) + "</li>");
+                                allGroups.push(group.groupId);
                             }); 
                         }
                     });
@@ -349,17 +439,17 @@
                             data : { domain : "example.com", "groups" : groups },
                             callback : function(data) {
                                 
+                                if(displayDataTable != null) { 
+                                    displayDataTable.fnDestroy();
+                                }
                                 
-                                
-                                //groupNavyDisplayTable.children("tbody").empty();
-                                displayDataTable.fnClearTable();
+                                groupNavyDisplayTable.children("tbody").empty();
                         
                                 $(data.users).each(function() {
-                                    //groupNavyDisplayTable.append("<tr id=\"" + this.userId + "\"><td><span>" + showEntryId(this.userId) + "</span></td><td>" + this.fullName + "</td></tr>");
-                                    displayDataTable.fnAddData([this.userId, this.fullName]);
-                                    
+                                    groupNavyDisplayTable.append("<tr id=\"" + this.userId + "\"><td><span>" + showEntryId(this.userId) + "</span></td><td>" + this.fullName + "</td></tr>");
                                 });
-                                
+                                                              
+                                displayDataTable = groupNavyDisplayTable.dataTable();
                                 
                                 groupNavyDisplayTable.children("tbody").children("tr").click(function() {
                                     displayUser( $(this).attr("id") );
@@ -368,23 +458,6 @@
                         });
                     
                     }
-                    
-                    $("button.remove-group").click(function() {
-                        rpcService.call({
-                            action : "group.remove",
-                            data : { groupId : groupNavySelector.children("li.ui-selected").first().attr("id") },
-                            callback : function(data) {                       
-                                if(data.success) {
-                                    //alert("Successfully removed!");
-                                    $().customAlert({
-                                        alertTitle : 'Successfully removed!',
-                                        alertOk	 : 'OK',
-                                        draggable : false
-                                    });
-                                }
-                            }
-                        });
-                    });
 
                     $.fn.loadGroups(allGroups);
                     var displayUser = function(userId) {
@@ -400,74 +473,11 @@
                 
                     $("button.create-new-user").click(function() {
                         var attrs = new Map();
-                        attrs.put("fullName", "");
-                        attrs.put("lastName", "");
-                        attrs.put("shortUid", "");
-                        $(new UdUser("new", attrs)).editUserDialog("create");
-                    });
-                    
-                    
-                    $("button.create-new-group").click(function() {
-                        var createGroupDialog = $("div.template.create-group-dialog").clone();
-                        createGroupDialog.children("form").submit(function(data) {
-                            var shortGroupId = $(this).find("input[name=\"shortGroupId\"]").val();
-                            var description = $(this).find("input[name=\"description\"]").val();
-                            var groupId = shortGroupId + "@groups.example.com";
-                            rpcService.call({
-                                action : "group.add",
-                                data : {
-                                    "groupId" : groupId,
-                                    "description" : description
-                                },
-                                callback : function(response) {
-                                    if(bool(response.success)) {
-                                        addGroup(groupId);
-                                        createGroupDialog.dialog('destroy');
-                                    }
-                                }
-                            });
-                            
-                            return false;
-                        });
-                        createGroupDialog.dialog({ title : "Create Group" });
-                        
-                    });
-                    
-                    $("button.edit-group").click(function() {
-                        
-                        var groupId = groupNavySelector.children("li.ui-selected").first().attr("id");
-                    
-                        rpcService.call({
-                            action : "group.get",
-                            data : { "groupId" : groupId },
-                            callback : function(response) {
-                                var updateGroupDialog = $("div.template.create-group-dialog").clone();
-                                updateGroupDialog.children("form").find("button").text("Update");
-                                updateGroupDialog.children("form").find("input[name=\"description\"]").val(response.description);
-                                updateGroupDialog.children("form").find("input[name=\"shortGroupId\"]").val(showEntryId(groupId)).attr("disabled", true);
-                                updateGroupDialog.children("form").submit(function(data) {
-                                    var description = $(this).find("input[name=\"description\"]").val();
-                                    rpcService.call({
-                                        action : "group.mod",
-                                        data : {
-                                            "groupId" : groupId,
-                                            "description" : description
-                                        },
-                                        callback : function(response) {
-                                            alert(response.success);
-                                        }
-                                    });
-                            
-                                    return false;
-                                });
-                                updateGroupDialog.dialog({ 
-                                    title : "Edit Group",
-                                    close : function() {
-                                        $(this).dialog("destroy");
-                                    }
-                                });
-                            }
-                        });
+                        attrs.put("fullName", "Naomi Watts");
+                        attrs.put("lastName", "Watts");
+                        attrs.put("shortUid", "nw");
+                        //attrs.put("uid", "naomiwatts");
+                        $(new UdUser("nw@users.example.com", attrs)).editUserDialog("create");
                     });
                 
                 })();
@@ -483,23 +493,19 @@
                 font-size: 0.8em;
             }
 
-            #group-navy-ui {
-                margin-left: 21%;
-                margin-top: 3%;
-                float : left;
-                background-color: #dddddd;
-            }
-
             .group-navy-ui-selector {
                 float: left;
                 background-color: #dddddd;
+
             }
 
             .group-navy-ui-selector div {
                 padding: 0.15em 1.5em 0.15em 1em;
             }
 
+            #group-navy-ui {
 
+            }
 
             .group-navy-ui-select-li {
 
@@ -561,7 +567,7 @@
 
             .group-navy-ui-selectable .ui-selecting { background: #AAAAAA; }
             .group-navy-ui-selectable .ui-selected { background: #777777; color: white; }
-            .group-navy-ui-selectable { list-style-type: none; margin-top: 5.5em; padding: 0; width: auto; cursor: pointer; }
+            .group-navy-ui-selectable { list-style-type: none; margin: 0px 0px 0px 0px; padding: 0; width: auto; cursor: pointer; }
             .group-navy-ui-selectable li { margin: 0px 0px; padding: 0.15em 1.5em 0.15em 1em; font-size: 1.0em; background-color: #dddddd;  }
 
             .group-membership-del {
@@ -588,7 +594,6 @@
 
             .status-line {
                 width: 100%;
-                height: 1.5em;
                 text-align: center;
             }
 
@@ -608,51 +613,18 @@
                 padding : 2px 10px;
             }
 
-            .user-edit-ui,.user-membership-edit-ui {
-                border-top: 1px solid gray;
-                margin: 0.5em 0em;
-                padding: 0.5em 0em;
-            }
-
-            .user-membership-edit-ui-wrap,.user-edit-ui-wrap {
-                border: 1px solid gray;
-                padding: 0.5em 0.5em;
-                margin: 0.5em 0.2em;
-                -moz-border-radius: 6px;
-                -webkit-border-radius: 6px;
-                border-radius: 6px;
-            }
-
-            .user-edit-dialog {
-                min-width: 25em;
-            }
-
-            .create-group-dialog button {
-                float : right;
-            }
-
-            .group-toolbar {
-                padding : 5px;
-                margin : 0 0 10px 0;
-                background-color: #AAAAAA;
-            }
-
         </style>
     </head>
     <body>
         <div id="group-navy-ui">
+
             <div class="group-navy-ui-selector">
+                <div><button class="create-new-user" type="button">New User</button><button type="button">New Group</button></div>
+                <hr/>
                 <ol class="group-navy-ui-selectable">
                 </ol>
             </div>
             <div class="group-navy-ui-display-area">
-                <div class="group-toolbar">
-                    <button class="create-new-user" type="button">New User</button>
-                    <button  class="create-new-group" type="button">New Group</button>
-                    <button class="edit-group">Edit Group</button>
-                    <button class="remove-group">Remove Group</button>
-                    <button class="domain-settings">Domain Settings</button>
-                </div>
                 <table class="group-navy-ui-display-table">
                     <thead> 
                         <tr>
@@ -667,33 +639,20 @@
             </div>
         </div>
 
-        <div class="template create-group-dialog">
-            <form>
-                <table>
-                    <tr>
-                        <td>Group ID</td><td><input type="text" name="shortGroupId" value="" /></td>
-                    </tr>
-                    <tr>
-                        <td>Description</td><td><input type="text" name="description" value="" /></td>
-                    </tr>
-                </table>
-                <button type="submit">Create</button>
-            </form>
-        </div>
-
-
         <div class="template user-edit-dialog" >
             <div class="status-line"></div>
-            <a class="user-edit-ui-remove" href="javascript:;">Remove this user</a>
-            <div class="user-membership-edit-ui-wrap">
-                <a class="user-edit-ui-collapse-control" href="javascript:;">Membership</a>
-                <div class="user-membership-edit-ui">
+            <div class="user-membership-edit-wrap">
+                <a href="javascript:;">Group membership...</a>
+                <div style="display: none;" class="user-membership-edit">
+                    <table class="membership-groups-listing" /></table>
+                    <select class="add-group-control"><option value="-">Add group...</option></select><br/>
+                    <button type="button" class="user-membership-edit-submit">Update Membership</button>
                 </div>
+                <hr/>
             </div>
-            <div class="user-edit-ui-wrap">
-                <a  href="javascript:;">Attributes</a>
-                <div class="user-edit-ui"></div>
-            </div>
+            <table class="attribute-listing" ></table>
+            <select><option value="-">Add attribute...</option></select><br/>
+            <button style="float: right;" type="button" class="user-edit-submit">Update</button>
         </div>
 
     </body>

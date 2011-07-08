@@ -117,7 +117,7 @@ RPCService.prototype.call = function(query) {
     var request = null;
     
     if(query.data) {
-        request = query.data;
+        request = $.extend({}, query.data);
     } else {
         request = {};
     }
@@ -134,12 +134,12 @@ RPCService.prototype.call = function(query) {
 }
 
 function bool(val) {
-    return val === "true" || val == true;
+    return val == true;
 }
 
 function S4() {
-   return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+    return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
 }
 function guid() {
-   return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
+    return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
 }
