@@ -37,20 +37,16 @@
         <s:authentication-provider ref='secondLdapProvider' />
     </s:authentication-manager>
 
-
-    <!-- Traditional Bean version of the same configuration -->
-
-    <!-- This bean points at the embedded directory server created by the ldap-server element above  -->
     <bean id="contextSource" class="org.springframework.security.ldap.DefaultSpringSecurityContextSource">
         <constructor-arg value="${ldap.url}"/>
     </bean>
 
-    <bean id="secondLdapProvider" class="org.archone.vhd.authentication.StricLdapAuthenticationProvider">
+    <bean id="secondLdapProvider" class="org.archone.ad.authentication.StricLdapAuthenticationProvider">
         <constructor-arg>
             <bean class="org.springframework.security.ldap.authentication.BindAuthenticator">
                 <constructor-arg ref="contextSource" />
                 <property name="userSearch">
-                    <bean id="userSearch" class="org.archone.vhd.authentication.StrictLdapUserSearch">
+                    <bean id="userSearch" class="org.archone.ad.authentication.StrictLdapUserSearch">
                         <constructor-arg index="0" value="ou=users"/>
                         <constructor-arg index="1" value="(uid={0})"/>
                         <constructor-arg index="2" ref="contextSource" />
@@ -71,7 +67,7 @@
         <property name="userDetailsContextMapper" ref="userAttrsContextMapper"/>
     </bean>
 
-    <bean id="userAttrsContextMapper" class="org.archone.vhd.authentication.UserAttrsContextMapping" >
+    <bean id="userAttrsContextMapper" class="org.archone.ad.authentication.UserAttrsContextMapping" >
         <constructor-arg ref="contextSource" />
     </bean>
     
@@ -79,16 +75,18 @@
         <constructor-arg ref="contextSource" />    
     </bean>
     
-    <bean id="dnHelper" class="org.archone.vhd.model.NameHelperImpl" >
+    <bean id="nameHelper" class="org.archone.ad.naming.NameHelperImpl" >
         <constructor-arg index="0" value="ou=users" /> 
         <constructor-arg index="1" value="ou=groups" /> 
     </bean>
     
-    <bean id="displayAttributeHelper" class="org.archone.vhd.model.DisplayAttributeHelperImpl" init-method="init">
+    <bean id="userHelper" class="org.archone.ad.model.UserHelperImpl" />
+    
+    <bean id="displayAttributeHelper" class="org.archone.ad.schema.DisplayAttributeHelperImpl" init-method="init">
         <constructor-arg value="/WEB-INF/display-attributes.json" /> 
     </bean>
     
-    <bean id="ldapConfiguration" class="org.archone.vhd.model.SUADConfiguration" >
+    <bean id="ldapConfiguration" class="org.archone.ad.schema.SUADConfiguration" >
         <property name="ldapUrl" value="${ldap.url}" />
         <property name="userObjectClass" value="${ldap.user_object_class}" />
         <property name="groupObjectClass" value="${ldap.group_object_class}" />

@@ -1,0 +1,20 @@
+/*
+ * Content of this file is subject to the license
+ * you can find in the enclosed LICENSE.txt file with the project.
+ */
+package org.archone.ad.security;
+
+/**
+ *
+ * @author forker
+ */
+public class SecurityViolationException extends RuntimeException {
+
+    public SecurityViolationException() {
+    }
+    
+    public SecurityViolationException(String message) {
+        super(message);
+    }
+    
+}

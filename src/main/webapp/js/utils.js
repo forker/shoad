@@ -107,8 +107,6 @@ Map.prototype.getKeys = function() {
     return keys;
 }
 
-
-
 function RPCService(url) {
     this.endpoint = url;
 }
@@ -136,7 +134,6 @@ RPCService.prototype.call = function(query) {
 function bool(val) {
     return val == true;
 }
-
 function S4() {
     return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
 }

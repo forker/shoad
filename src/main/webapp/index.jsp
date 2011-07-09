@@ -14,7 +14,7 @@
         <script src="js/jquery-ui-1.8.13.custom.min.js" type="text/javascript" ></script>
         <script src="js/jquery.dataTables.min.js" type="text/javascript" ></script>
         <script src="js/utils.js" type="text/javascript" ></script>
-        <script src="js/udfront.js" type="text/javascript" ></script>
+        <script src="js/adfront.js" type="text/javascript" ></script>
         <link rel="stylesheet" href="css/overcast/jquery-ui-1.8.13.custom.css" type="text/css" />
         <link rel="stylesheet" href="css/user_list_table.css" type="text/css" />
         <script type="text/javascript">
@@ -57,7 +57,7 @@
                 var data = new Map();
                 var attrDefs = null;
                 var showFullEntryId = false;
-                var rpcService = new RPCService("/LDAPManager/rpc");
+                var rpcService = new RPCService("rpc");
                 var allGroups = null;
                 var methods = {
                     
@@ -283,8 +283,9 @@
                  */
                 (function() {
 
-                    var rpcService = new RPCService("/LDAPManager/rpc");
+                    var rpcService = new RPCService("rpc");
 
+                    var adminDomains = null;
                     var groupNavyRoot = $("#group-navy-ui");
 
                     var groupNavySelector= groupNavyRoot.children("div.group-navy-ui-selector").children("ol.group-navy-ui-selectable");
@@ -309,6 +310,16 @@
                         groupNavySelector.append("<li id=\"" + groupId + "\" class=\"group-navy-ui-select-li\">" + showEntryId(groupId) + "</li>");
                         allGroups.push(groupId);
                     }
+                    
+                    rpcService.call({
+                        action : "domain.list",
+                        data : {},
+                        callback : function(data) {
+                            if(data.success) {
+                                adminDomains = data.domains;
+                            }
+                        }
+                    });
 
                     rpcService.call({
                         action : "group.list",
@@ -348,8 +359,6 @@
                             action : "user.list",
                             data : { domain : "example.com", "groups" : groups },
                             callback : function(data) {
-                                
-                                
                                 
                                 //groupNavyDisplayTable.children("tbody").empty();
                                 displayDataTable.fnClearTable();
@@ -442,10 +451,11 @@
                             data : { "groupId" : groupId },
                             callback : function(response) {
                                 var updateGroupDialog = $("div.template.create-group-dialog").clone();
-                                updateGroupDialog.children("form").find("button").text("Update");
-                                updateGroupDialog.children("form").find("input[name=\"description\"]").val(response.description);
-                                updateGroupDialog.children("form").find("input[name=\"shortGroupId\"]").val(showEntryId(groupId)).attr("disabled", true);
-                                updateGroupDialog.children("form").submit(function(data) {
+                                var form = updateGroupDialog.children("form");
+                                form.find("button").text("Update");
+                                form.find("input[name=\"description\"]").val(response.description);
+                                form.find("input[name=\"shortGroupId\"]").val(showEntryId(groupId)).attr("disabled", true);
+                                form.submit(function(data) {
                                     var description = $(this).find("input[name=\"description\"]").val();
                                     rpcService.call({
                                         action : "group.mod",
