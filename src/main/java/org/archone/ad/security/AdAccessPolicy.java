@@ -18,7 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public class AdAccessPolicy {
 
@@ -75,7 +75,6 @@ public class AdAccessPolicy {
                     throw new SecurityViolationException(domain + " is forbidden");
                 }
             }
-
         }
     }
 }

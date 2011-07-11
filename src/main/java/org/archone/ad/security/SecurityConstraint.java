@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

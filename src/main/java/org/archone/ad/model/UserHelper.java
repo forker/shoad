@@ -10,9 +10,8 @@ import org.archone.ad.authentication.BasicUser;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public interface UserHelper {
     public List<String> getAdminDomains(BasicUser basicUser) throws InvalidNameException;
-    
 }

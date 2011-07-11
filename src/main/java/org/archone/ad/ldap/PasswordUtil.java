@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Content of this file is subject to the license
+ * you can find in the enclosed LICENSE.txt file with the project.
  */
 package org.archone.ad.ldap;
 
@@ -14,7 +14,7 @@ import org.springframework.security.core.codec.Base64;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public class PasswordUtil {
 

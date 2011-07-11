@@ -6,7 +6,7 @@ package org.archone.ad.model;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public class MalformedRequestException extends RuntimeException {
 

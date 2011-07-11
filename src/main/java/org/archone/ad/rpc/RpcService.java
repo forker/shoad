@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Content of this file is subject to the license
+ * you can find in the enclosed LICENSE.txt file with the project.
  */
 package org.archone.ad.rpc;
 
@@ -10,7 +10,7 @@ import javax.servlet.http.HttpSession;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public interface RpcService {
     public String process(String body);

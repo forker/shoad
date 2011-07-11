@@ -19,263 +19,6 @@
         <link rel="stylesheet" href="css/user_list_table.css" type="text/css" />
         <script type="text/javascript">
             
-            (function($) {
-                        
-                var UserEditUI = function(elementId) {
-                    this.title = "Edit User";
-                    this.buttonText = "Update";
-                    this.root = $("div.template.user-edit-dialog").clone().attr("id", elementId).appendTo($(document.body));
-                    this.showMembershipEdit = true;
-                    
-                    this.mode = function(mode) {
-                        if(mode == "edit") {
-                            this.title = "Edit User";
-                            this.buttonText = "Update";
-                            this.root.find("div.user-membership-edit-ui-wrap").show();
-                        } else if(mode == "create") {
-                            this.title = "Create User";
-                            this.buttonText = "Create";
-                            this.root.find("div.user-membership-edit-ui-wrap").hide();
-                        }
-                        this.root.find("div.user-edit-ui > button").text(this.buttonText);                            
-                    };
-                    
-                    this.start = function(data) {
-                        $(this.root).find(".user-edit-ui").mapenform(data);
-                    };
-                    
-                    this.showNotice = function(message, success) {
-                        var noticeClass = success ? "success" : "error";
-                        var statusLine = this.root.find(".status-line");
-                        statusLine.empty()
-                        $("<span/>").addClass("status-text").addClass(noticeClass).text(message).appendTo(statusLine).delay(2000).fadeOut(200);
-                    }
-                    
-                    
-                };
-                        
-                var data = new Map();
-                var attrDefs = null;
-                var showFullEntryId = false;
-                var rpcService = new RPCService("rpc");
-                var allGroups = null;
-                var methods = {
-                    
-                    loadAttrDefs : function(callback) {
-                        rpcService.call({
-                            action : "attr.defs.get",
-                            callback : function(data) {
-                                attrDefs = new Map(data);
-                                callback();
-                            }
-                        });
-                    },
-                    
-                    showNotice : function(elData, message, success) {
-                        var noticeClass = success ? "success" : "error";
-                        var statusLine = elData.get("userEditRoot").find(".status-line");
-                        statusLine.empty()
-                        $("<span/>").addClass("status-text").addClass(noticeClass).text(message).appendTo(statusLine);
-                        statusLine.show().delay(2000).slideUp(200);
-                    },
-                    
-                    showEntryId : function(fullUserId) {
-                        return showFullEntryId ? fullUserId.toString() : fullUserId.split("@")[0];
-                    },
-                   
-                    addGroupToAddList : function(userMembershipEditRoot, groupId) {
-                        $("<option/>").val(groupId).text( methods.showEntryId( groupId ) ).appendTo(userMembershipEditRoot.children("select"));
-                    },
-                    
-                    addGroup : function(userMembershipEditRoot, groupId) {
-                        $("<tr for=\"" + groupId + "\"><td>" + methods.showEntryId( groupId ) + "</td><td><a href=\"javascript:;\" class=\"group-membership-del\">[-]</a></td></tr>")
-                        .appendTo(userMembershipEditRoot.children("table")).children("td").children("a").click(function() {
-                            methods.addGroupToAddList(userMembershipEditRoot, $(this).parent("td").parent("tr").attr("for") );
-                            $(this).parent("td").parent("tr").remove();
-                        });
-                    }
-                };
-
-                $.fn.extend({
-                    
-                    loadGroups : function(groups) {
-                        allGroups = groups;
-                    },
-                                   
-                    editUserDialog : function(action) {
-   
-                        if(attrDefs == null) {
-                            var elements = $(this);
-                            methods.loadAttrDefs(function() {
-                                elements.editUserDialog(action);
-                            });
-                            return this;
-                        }
-                    
-                        var isNewUser = (action == "create");
-                        
-                        var user = $(this).first()[0];
-                            
-                        var elementId = user.getUserId() + "-"  + guid();
-                        var userEditUI = new UserEditUI(elementId);
-                        userEditUI.mode(action);
-                        userEditUI.start({ source : user.getAttrs(),
-                            schema : attrDefs,
-                            sbTitle : userEditUI.buttonText,
-                            callback : function(newMap) {
-                                if(isNewUser) {
-                                    user.userId = newMap.get("shortUid") + "@users.example.com";
-                                    
-                                    var request = $.extend(true, {}, newMap);
-                                    
-                                    request.put("userId", user.getUserId());
-
-                                    rpcService.call({
-                                        action : "user.add",
-                                        data : request.getAsJsObj(),
-                                        callback : function(data) {
-                                            var noticeText = data.success ? "Successfully Created" : "Create Failed";
-                                            userEditUI.showNotice( noticeText, data.success);
-                                            userEditUI.mode("edit");
-                                            isNewUser = false;
-                                            
-                                            user.setAttrs(newMap);
-                                        }
-                                    });
-                                    
-                                } else {
-                                    
-                                    var request = new Map();
-                                    request.put("mod", new Map());
-                                    request.put("add", new Map());
-                                    request.put("remove", new Map());
-                        
-                                    var beforeKeys = user.getAttrs().getKeys();
-                                    var afterKeys = [];
-                                    
-                                    $.each(newMap.getData(), function(apiKey, value) {
-                                        afterKeys.push(apiKey);
-                                        if(attrDefs.get(apiKey).multiValue == true) {
-                                            var newValArray = value;
-                                            
-                                            if(!user.hasAttr(apiKey) || typeof(user.getAttr(apiKey)) == "undefined") { user.setAttr(apiKey, []); }
-                                            
-                                            if(!areArraysEqual(newValArray, user.getAttr(apiKey))) {
-                                                var arrDiff = new ArrayDiff(newValArray, user.getAttr(apiKey));
-                                                request.get("add").put( apiKey, arrDiff.firstOnly);
-                                                request.get("remove").put( apiKey, arrDiff.secondOnly);
-                                            }
-                                
-                                        } else if(attrDefs.get(apiKey).type == "boolean" ) {
-                                            var newVal = value;
-                             
-                                            if(newVal != user.getAttr(apiKey)) {
-                                                request.get("mod").put( apiKey, newVal);
-                                            }
-                                
-                                        } else {
-                                            var newVal = value;
-                            
-                                            if(newVal != user.getAttr(apiKey)) {
-                                                request.get("mod").put( apiKey, newVal);
-                                            }
-                                        }
-                                    });
-                        
-                                    if(!areArraysEqual(beforeKeys, afterKeys)) {
-                                        var arrDiff = new ArrayDiff(beforeKeys, afterKeys);
-                                        request.put("removeAttr", arrDiff.firstOnly);
-                                    }
-
-                                    rpcService.call({
-                                        action : "user.mod",
-                                        data : { userId : user.getUserId(),
-                                            mod : request.get("mod").getAsJsObj(),
-                                            add : request.get("add").getAsJsObj(),
-                                            remove : request.get("remove").getAsJsObj(),
-                                            removeAttr : request.get("removeAttr") },
-                                        callback : function(data) {
-                                            var noticeText = data.success ? "Successfully Updated" : "Update Failed";
-                                            userEditUI.showNotice(noticeText, data.success);
-                                        }
-                                    });
-                                }
-                            }
-                        });
-                                                       
-                        userEditUI.mode(isNewUser ? "create" : "edit");
-                        
-                        
-                        userEditUI.root.dialog({
-                            close : function() {
-                                userEditUI.root.remove();
-                            },
-                            title : userEditUI.title,
-                            width : "auto",
-                            modal : true
-                        });
-                        
-                        userEditUI.root.find("a.user-edit-ui-remove").click(function() {
-                            rpcService.call({
-                                action : "user.remove",
-                                data : { userId : user.getUserId() },
-                                callback : function(data) {                       
-                                    if(data.success) {
-                                        userEditUI.root.remove();
-                                    }
-                                }
-                            });
-                        });
-                        
-                        
-                        userEditUI.root.find(".user-edit-ui-collapse-control").click(function() {
-                            
-                            $(this).unbind("click");
-                            var nextDiv = $(this).next();
-                            
-                            rpcService.call({
-                                action : "user.membership.get",
-                                data : { userId : user.getUserId() },
-                                callback : function(data) {
-                                    user.setGroups([]);
-                                    $(data.groups).each(function() {
-                                        user.getGroups().push(this.groupId);
-                                    });
-                                    
-                                    nextDiv.show('slow');
-                                    
-                                    userEditUI.root.find(".user-membership-edit-ui").listenform({
-                                        membership : user.getGroups(),
-                                        available : allGroups,
-                                        getLabel : function(groupId) { return methods.showEntryId(groupId) },
-                                        callback : function(newGroupSet, oldGroupSet) {
-                                            if(!areArraysEqual(newGroupSet, oldGroupSet)) {
-                                                var arrDiff = new ArrayDiff(newGroupSet, oldGroupSet);
-                                                rpcService.call({
-                                                    action : "user.membership.mod",
-                                                    data : { userId : user.getUserId(), add : arrDiff.firstOnly, remove : arrDiff.secondOnly },
-                                                    callback : function(data) {
-                                                        var noticeText = data.success ? "Successfully Updated" : "Update Failed";
-                                                        userEditUI.showNotice(noticeText, data.success);
-                                                    }
-                                                });
-                                                        
-                                                user.setGroups(newGroupSet);
-                                            }
-                                        }
-                                    });
-                                }
-                            });
-                            
-                            return false;
-                        }).next().hide();
-                        
-                        
-                        
-                    }
-                });
-
-            })(jQuery);
             
             $(function() {
                 /*
@@ -286,6 +29,9 @@
                     var rpcService = new RPCService("rpc");
 
                     var adminDomains = null;
+                    var urlHash = window.location.hash;
+                    var currentDomain = urlHash.length > 0 ? urlHash.substr(1) : null;
+
                     var groupNavyRoot = $("#group-navy-ui");
 
                     var groupNavySelector= groupNavyRoot.children("div.group-navy-ui-selector").children("ol.group-navy-ui-selectable");
@@ -316,14 +62,29 @@
                         data : {},
                         callback : function(data) {
                             if(data.success) {
+                                if(currentDomain == null) {
+                                    if(data.domains.length > 0) {
+                                        window.location.href = window.location.href + "#" + data.domains[0];
+                                    }
+                                }
                                 adminDomains = data.domains;
+                                var $domainSelect = $("select.domain-list");
+                                $(data.domains).each(function(key, value) {
+                                    //alert(this);
+                                    $("<option/>").val(value).text(value).appendTo($domainSelect);
+                                });
+                                
+                                $domainSelect.val(currentDomain).change(function() {
+                                    window.location.href = "#" + $(this).val();
+                                    location.reload();
+                                });
                             }
                         }
                     });
 
                     rpcService.call({
                         action : "group.list",
-                        data : { domain : "example.com" },
+                        data : { domain : currentDomain },
                         callback : function(data) {                       
                             groupNavySelector.append("<li id=\"all\" class=\"group-navy-ui-select-li\">All Users</li>");
                             $(data.groups).each(function(index, group) {
@@ -357,18 +118,15 @@
                         
                         rpcService.call({
                             action : "user.list",
-                            data : { domain : "example.com", "groups" : groups },
+                            data : { domain : currentDomain, "groups" : groups },
                             callback : function(data) {
                                 
-                                //groupNavyDisplayTable.children("tbody").empty();
                                 displayDataTable.fnClearTable();
                         
                                 $(data.users).each(function() {
-                                    //groupNavyDisplayTable.append("<tr id=\"" + this.userId + "\"><td><span>" + showEntryId(this.userId) + "</span></td><td>" + this.fullName + "</td></tr>");
                                     displayDataTable.fnAddData([this.userId, this.fullName]);
                                     
                                 });
-                                
                                 
                                 groupNavyDisplayTable.children("tbody").children("tr").click(function() {
                                     displayUser( $(this).attr("id") );
@@ -396,6 +154,7 @@
                     });
 
                     $.fn.loadGroups(allGroups);
+                    $.fn.setDomain(currentDomain);
                     var displayUser = function(userId) {
                     
                         rpcService.call({
@@ -421,7 +180,7 @@
                         createGroupDialog.children("form").submit(function(data) {
                             var shortGroupId = $(this).find("input[name=\"shortGroupId\"]").val();
                             var description = $(this).find("input[name=\"description\"]").val();
-                            var groupId = shortGroupId + "@groups.example.com";
+                            var groupId = shortGroupId + "@groups." + currentDomain;
                             rpcService.call({
                                 action : "group.add",
                                 data : {
@@ -467,7 +226,6 @@
                                             alert(response.success);
                                         }
                                     });
-                            
                                     return false;
                                 });
                                 updateGroupDialog.dialog({ 
@@ -618,13 +376,13 @@
                 padding : 2px 10px;
             }
 
-            .user-edit-ui,.user-membership-edit-ui {
+            .user-edit-ui,.user-membership-edit-ui,.collapsible {
                 border-top: 1px solid gray;
                 margin: 0.5em 0em;
                 padding: 0.5em 0em;
             }
 
-            .user-membership-edit-ui-wrap,.user-edit-ui-wrap {
+            .user-membership-edit-ui-wrap,.user-edit-ui-wrap, .collapsible-wrap {
                 border: 1px solid gray;
                 padding: 0.5em 0.5em;
                 margin: 0.5em 0.2em;
@@ -646,12 +404,21 @@
                 margin : 0 0 10px 0;
                 background-color: #AAAAAA;
             }
+            
+            .user-edit-ui-remove {
+                
+            }
+            
+            .user-remove-ui {
+                text-align: center;
+            }
 
         </style>
     </head>
     <body>
         <div id="group-navy-ui">
             <div class="group-navy-ui-selector">
+                <select class="domain-list"></select>
                 <ol class="group-navy-ui-selectable">
                 </ol>
             </div>
@@ -694,15 +461,22 @@
 
         <div class="template user-edit-dialog" >
             <div class="status-line"></div>
-            <a class="user-edit-ui-remove" href="javascript:;">Remove this user</a>
-            <div class="user-membership-edit-ui-wrap">
-                <a class="user-edit-ui-collapse-control" href="javascript:;">Membership</a>
-                <div class="user-membership-edit-ui">
+            
+            <div class="user-membership-edit-ui-wrap collapsible-wrap">
+                <a class="collapse-control" href="javascript:;">Membership</a>
+                <div class="collapsible user-membership-edit-ui">
                 </div>
             </div>
             <div class="user-edit-ui-wrap">
                 <a  href="javascript:;">Attributes</a>
                 <div class="user-edit-ui"></div>
+            </div>
+            <div class="user-edit-ui-remove-ui-wrap collapsible-wrap">
+                <a class="collapse-control" href="javascript:;">Remove this user</a>
+                <div class="collapsible user-remove-ui">
+                    Are you sure?<br/>
+                    <a class="user-edit-ui-remove" href="javascript:;">Remove!</a>
+                </div>
             </div>
         </div>
 

@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Content of this file is subject to the license
+ * you can find in the enclosed LICENSE.txt file with the project.
  */
 package org.archone.ad.rpc;
 
@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

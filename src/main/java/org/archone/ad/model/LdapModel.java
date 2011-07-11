@@ -1,10 +1,10 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Content of this file is subject to the license
+ * you can find in the enclosed LICENSE.txt file with the project.
  */
 package org.archone.ad.model;
 
-import org.archone.ad.schema.SUADConfiguration;
+import org.archone.ad.schema.AdConfiguration;
 import org.archone.ad.rpc.RPCAction;
 import org.archone.ad.schema.DisplayAttributeHelper;
 import org.archone.ad.schema.DisplayAttribute;
@@ -35,7 +35,7 @@ import org.springframework.ldap.core.DirContextAdapter;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public class LdapModel {
 
@@ -46,9 +46,8 @@ public class LdapModel {
     @Autowired
     private DisplayAttributeHelper displayAttributeHelper;
     @Autowired
-    private SUADConfiguration ldapConfiguration;
-    
-    
+    private AdConfiguration ldapConfiguration;
+     
     @RPCAction(name = "domain.list", role="ROLE_ADMINISTRATOR")
     public HashMap<String, Object> listDomains(OperationContext opContext) throws NamingException {
        
@@ -58,6 +57,7 @@ public class LdapModel {
         
         HashMap<String, Object> response = new HashMap<String, Object>();
         response.put("domains", domains);
+        response.put("success", true);
 
         return response;
     }

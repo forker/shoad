@@ -6,7 +6,7 @@ package org.archone.ad.security;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public class SecurityViolationException extends RuntimeException {
 

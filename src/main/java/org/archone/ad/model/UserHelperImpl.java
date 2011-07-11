@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  *
- * @author forker
+ * @author romansergey
  */
 public class UserHelperImpl implements UserHelper {
     

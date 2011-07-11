@@ -86,7 +86,7 @@
         <constructor-arg value="/WEB-INF/display-attributes.json" /> 
     </bean>
     
-    <bean id="ldapConfiguration" class="org.archone.ad.schema.SUADConfiguration" >
+    <bean id="ldapConfiguration" class="org.archone.ad.schema.AdConfiguration" >
         <property name="ldapUrl" value="${ldap.url}" />
         <property name="userObjectClass" value="${ldap.user_object_class}" />
         <property name="groupObjectClass" value="${ldap.group_object_class}" />

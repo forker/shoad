@@ -83,6 +83,10 @@ Map.prototype.containsKey = function(checkKey) {
     return false;
 }
 
+Map.prototype.remove = function(key) {
+   delete this.data[key];
+}
+
 Map.prototype.get = function(key) {
     return this.data[key];
 }
