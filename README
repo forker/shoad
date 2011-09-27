@@ -3,11 +3,13 @@ Simple Hosting Oriented Account Direcotory (SHOAD)
 SHOAD is basically a frontend for an LDAP server which is supposed to hold
 user account and membership information in trees isolated by access control.
 
+LDAP is supported by many software server products as an authentication and authorization backend,
+but the LDAP concept and, in particular, access protocol seems to be redundant for the majority of use cases.
+This project's mission is to implement a frontend with a simpler access by introducing some conventions.
+
 What does this project aim to provide:
 - JSON interface for manipulating user entries
 - LDAP attribute names translation into desired JSON api names.
 - jQuery extensions for very quick implementation of UI for user account listing and editing.
-- More coming soon...
 
-Currently the project is in the "pre-alpha-first-milestone" stage, but I'm planning to come up
-with some beta within this summer of 2011.
+Current code status is for review only. Not for use.
