@@ -4,7 +4,7 @@
  */
 package org.archone.ad.model;
 
-import org.archone.ad.naming.NameHelperImpl;
+import org.archone.ad.naming.NameHelper;
 import org.archone.ad.naming.DomainDn;
 import org.archone.ad.naming.NameHelper;
 import javax.naming.InvalidNameException;
@@ -24,7 +24,7 @@ public class DomainDnTest {
     private NameHelper dh;
 
     public DomainDnTest() {
-        dh = new NameHelperImpl("ou=users", "ou=groups");
+        dh = new NameHelper("ou=users", "ou=groups");
     }
 
     @BeforeClass

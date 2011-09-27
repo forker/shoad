@@ -91,8 +91,16 @@ UdUser.attrDefs = null;
                 methods.removeAttribute(table, row.attr("for"));
             }));
         },
-        addAttribute : function(target, key, value) {
-            var currentRow = $("<tr/>").attr("for", key).appendTo(target);
+        addAttribute : function(target, key, value, showIndex) {
+            var currentRow = $("<tr/>").attr("for", key);
+            var beforeRow = target.find("tr:eq(" + (parseInt(showIndex) - 1) + ")");
+            
+            if(beforeRow.length == 0) {
+                currentRow.appendTo(target);
+            } else {
+                currentRow.insertBefore(beforeRow);
+            }
+            
             currentRow.append("<td>"+ schema.get(key).displayName +":</td>");
             var valueCell = $("<td/>").appendTo(currentRow);
             if(schema.get(key).multiValue == true) {
@@ -130,10 +138,7 @@ UdUser.attrDefs = null;
             schema = data.schema;
             var target = $(this).first();
             var mapTable = $("<table></table>").appendTo(target);
-            
-            for(var key in map.getData()) {
-                methods.addAttribute(mapTable, key, map.get(key));
-            }
+           
             
             var addAttrSelect = $("<select><option>Add Attribute</option></select>").appendTo(target).change(function() {
                 var key = $(this).val();
@@ -144,6 +149,8 @@ UdUser.attrDefs = null;
             for(var key in data.schema.getData()) {
                 if(!map.containsKey(key)) {
                     $("<option/>").val(key).text(data.schema.get(key).displayName).appendTo(addAttrSelect);
+                } else {
+                    methods.addAttribute(mapTable, key, map.get(key), data.schema.get(key).showOrderIndex);
                 }
             }
                             
@@ -204,21 +211,10 @@ UdUser.attrDefs = null;
                 
                 data.callback(newGroupSet, membership);
             });
-            
         }
     });
 
 })(jQuery);
-
-
-
-
-
-
-
-
-
-
 
 
 

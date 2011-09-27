@@ -4,21 +4,24 @@
     "apiName" : "shortUid",
     "displayName" : "Short User Id",
     "type" : "string",
-    "access" : "userView"
+    "access" : "userView",
+    "showOrderIndex" : "1"
 },
 {
-    "ldapName": "suad-accountLocked",
+    "ldapName": "shoad-accountLocked",
     "apiName" : "locked",
     "displayName" : "Account Locked",
     "type" : "boolean",
-    "access" : "userView"
+    "access" : "userView",
+    "showOrderIndex" : "6"
 },
 {
-    "ldapName": "suad-accountSuspended",
+    "ldapName": "shoad-accountSuspended",
     "apiName" : "suspended",
     "displayName" : "Account Suspended",
     "type" : "boolean",
-    "access" : "userView"
+    "access" : "userView",
+    "showOrderIndex" : "5"
 },
 {
     "ldapName": "cn",
@@ -26,7 +29,8 @@
     "displayName" : "Full Name",
     "mustHave" : true,
     "type" : "string",
-    "access" : "userView userEdit"
+    "access" : "userView userEdit",
+    "showOrderIndex" : "2"
 },
 {
     "ldapName": "mail",
@@ -34,7 +38,8 @@
     "type" : "string",
     "access" : "userView",
     "multiValue" : true,
-    "unique" : "domain"
+    "unique" : "domain",
+    "showOrderIndex" : "4"
 },
 {
     "ldapName": "sn",
@@ -42,6 +47,7 @@
     "mustHave" : true,
     "displayName" : "Last name",
     "type" : "string",
-    "access" : "userEdit"
+    "access" : "userEdit",
+    "showOrderIndex" : "3"
 }
 ]

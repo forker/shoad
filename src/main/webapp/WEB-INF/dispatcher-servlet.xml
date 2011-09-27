@@ -29,7 +29,7 @@
     <bean id="rpcService" class="org.archone.ad.rpc.RpcServiceImpl" init-method="init" >
         <property name="actionClasses">
             <list>
-                <value>org.archone.ad.model.LdapModel</value>
+                <value>org.archone.ad.model.LdapActions</value>
             </list>
         </property>
         <property name="securityConstraintClasses">
@@ -40,7 +40,7 @@
     </bean>       
 
         
-    <bean id="ldapModel" class="org.archone.ad.model.LdapModel" />
+    <bean id="ldapModel" class="org.archone.ad.domain.LdapActions" />
     <bean id="adAccessPolicy" class="org.archone.ad.security.AdAccessPolicy" />
     
 

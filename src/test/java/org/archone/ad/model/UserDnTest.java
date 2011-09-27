@@ -4,7 +4,7 @@
  */
 package org.archone.ad.model;
 
-import org.archone.ad.naming.NameHelperImpl;
+import org.archone.ad.naming.NameHelper;
 import org.archone.ad.naming.UserDn;
 import org.archone.ad.naming.NameHelper;
 import javax.naming.InvalidNameException;
@@ -24,7 +24,7 @@ public class UserDnTest {
     private NameHelper dh;
     
     public UserDnTest() {
-        dh = new NameHelperImpl("ou=users", "ou=groups");
+        dh = new NameHelper("ou=users", "ou=groups");
     }
 
     @BeforeClass
@@ -62,14 +62,14 @@ public class UserDnTest {
     public void testGetAsUserId() throws InvalidNameException {
         System.out.println("getAsUserId");
         UserDn instance = dh.newUserDn("uid=kuzya,ou=users,dc=example,dc=com");
-        String expResult = "kuzya@users.example.com";
+        String expResult = "kuzya@example.com";
         String result = instance.getAsUserId();
         assertEquals(expResult, result);
     }
     
     @Test
     public void testFromUserId() throws InvalidNameException {
-        String userId = "kuzya@users.example.com";
+        String userId = "kuzya@example.com";
         UserDn userDn = dh.newUserDnFromId(userId);
         
         assertEquals(userId, userDn.getAsUserId());

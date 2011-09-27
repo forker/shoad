@@ -2,18 +2,18 @@
  * Content of this file is subject to the license
  * you can find in the enclosed LICENSE.txt file with the project.
  */
-package org.archone.ad.security;
+package org.archone.ad.rpc;
 
 /**
  *
  * @author romansergey
  */
-public class SecurityViolationException extends RuntimeException {
+public class MalformedRequestException extends RuntimeException {
 
-    public SecurityViolationException() {
+    public MalformedRequestException() {
     }
     
-    public SecurityViolationException(String message) {
+    public MalformedRequestException(String message) {
         super(message);
     }
     

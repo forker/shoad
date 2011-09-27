@@ -28,8 +28,8 @@ public class UserDn extends LdapName {
     }
     
     public static UserDn fromUserId(String userId, String usersRdn) throws InvalidNameException {
-        if(userId.matches("[a-z\\.\\-]{1,}@users(\\.[a-z\\-]{1,}){1,}")) {
-            return new UserDn ( "uid=" + userId.split("@")[0] + "," + usersRdn + "," + DomainDn.parseDomainDn( userId.replaceAll("[a-z\\.\\-]{1,}@users\\.", "" ) ), usersRdn);
+        if(userId.matches("[a-z\\.\\-]{1,}@[a-z\\-]+(\\.[a-z\\-]{1,}){1,}")) {
+            return new UserDn ( "uid=" + userId.split("@")[0] + "," + usersRdn + "," + DomainDn.parseDomainDn( userId.replaceAll("[a-z\\.\\-]+@", "" ) ), usersRdn);
         } else {
             throw new InvalidNameException();
         }
@@ -49,8 +49,7 @@ public class UserDn extends LdapName {
     public String getAsUserId() {
         StringBuilder userId = new StringBuilder();
         userId.append( this.get(this.size() - 1).replaceAll("uid=", "") );
-        userId.append( "@users" );
-        userId.append(".");
+        userId.append( "@" );
         userId.append(getDomain());
 
         return userId.toString();

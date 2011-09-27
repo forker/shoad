@@ -10,7 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.commons.lang.ArrayUtils;
-import org.springframework.security.core.codec.Base64;
+import org.apache.shiro.codec.Base64;
 
 /**
  *

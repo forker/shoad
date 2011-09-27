@@ -14,14 +14,11 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.http.HttpSession;
-import org.archone.ad.authentication.BasicUser;
-import org.archone.ad.model.MalformedRequestException;
+import org.archone.ad.naming.NameConvertor;
 import org.archone.ad.security.SecuredMethod;
 import org.archone.ad.security.SecurityConstraint;
-import org.archone.ad.security.SecurityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.Assert;
 
 /**
@@ -34,9 +31,10 @@ public class RpcServiceImpl implements RpcService {
     private List<String> securityConstraintClasses;
     private HashMap<String, HashMap<String, Object>> callMap = new HashMap<String, HashMap<String, Object>>();
     private HashMap<String, HashMap<String, Object>> scMap = new HashMap<String, HashMap<String, Object>>();
-    
     @Autowired
     private ApplicationContext applicationContext;
+    @Autowired
+    private NameConvertor nameConvertor;
 
     public void init() throws ClassNotFoundException, InstantiationException, SecurityViolationException {
         for (String className : actionClasses) {
@@ -58,23 +56,23 @@ public class RpcServiceImpl implements RpcService {
                 }
             }
         }
-        
-        for(String className : getSecurityConstraintClasses()) {
+
+        for (String className : getSecurityConstraintClasses()) {
             Object object = applicationContext.getBean(Class.forName(className));
             for (Method method : Class.forName(className).getMethods()) {
-                if(method.isAnnotationPresent(SecurityConstraint.class)) {
+                if (method.isAnnotationPresent(SecurityConstraint.class)) {
                     HashMap<String, Object> scCheck = new HashMap<String, Object>();
                     scCheck.put("method", method);
                     scCheck.put("object", object);
-                    
+
                     String name = method.getAnnotation(SecurityConstraint.class).name();
                     scMap.put(name, scCheck);
-                    
+
                     Logger.getLogger(this.getClass().getName()).log(Level.INFO, "Registered Security Constraint with name {0}", name);
                 }
             }
         }
-        
+
     }
 
     @Override
@@ -90,74 +88,62 @@ public class RpcServiceImpl implements RpcService {
 
     public HashMap<String, Object> process(HttpSession session, HashMap<String, Object> request) throws SecurityViolationException, IllegalArgumentException, InvocationTargetException, IllegalAccessException {
 
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        if (!(principal instanceof BasicUser)) {
-            throw new RuntimeException("Unexpected principal object");
-        }
-
-        BasicUser basicUser = (BasicUser) principal;
-
         HashMap rpcCall = this.callMap.get((String) request.get("rpcAction"));
         Assert.notNull(rpcCall, "Action not found");
 
         try {
 
-            String[] roles = (String[]) rpcCall.get("role");
-            for (String role : roles) {
-                if (basicUser.hasAuthority(role)) {
+            String[] requiredFields = (String[]) rpcCall.get("required");
+            for (String field : requiredFields) {
+                
+                String[] fieldReqParts = field.split(":");
+                String fieldName = fieldReqParts[0];
 
-                    String[] requiredFields = (String[]) rpcCall.get("required");
-                    for (String field : requiredFields) {
-                        if (!request.containsKey(field)) {
-                            throw new MalformedRequestException("Field " + field + " required for this request");
-                        }
-                    }
-
-                    Method method = (Method) rpcCall.get("method");
-                    
-                    /*
-                     * Performing security checks if method is annotated with SecuredMethod
-                     */
-                    if(method.isAnnotationPresent(SecuredMethod.class)) {
-                        String[] constraints = method.getAnnotation(SecuredMethod.class).constraints();
-                        
-                        for(String constraint : constraints) {
-                            HashMap<String, Object> scUnit = scMap.get(constraint);
-                            if(scUnit != null) {
-                                Method scMethod = (Method) scUnit.get("method");
-                                scMethod.invoke(scUnit.get("object"), new OperationContext(session, (BasicUser) principal, request));
-                            } else {
-                                throw new RuntimeException("Failed to find a required security constraint");
-                            }
-                        }
-                    }
-                    
-                    return (HashMap<String, Object>) method.invoke(rpcCall.get("object"), new OperationContext(session, (BasicUser) principal, request));
+                if (!request.containsKey(fieldName)) {
+                    throw new MalformedRequestException("Field " + field + " required for this request");
                 }
             }
-            
-            throw new SecurityViolationException("Access Forbidden");
-            
+
+            Method method = (Method) rpcCall.get("method");
+
+            /*
+             * Performing security checks if method is annotated with SecuredMethod
+             */
+            if (method.isAnnotationPresent(SecuredMethod.class)) {
+                String[] constraints = method.getAnnotation(SecuredMethod.class).constraints();
+
+                for (String constraint : constraints) {
+                    HashMap<String, Object> scUnit = scMap.get(constraint);
+                    if (scUnit != null) {
+                        Method scMethod = (Method) scUnit.get("method");
+                        scMethod.invoke(scUnit.get("object"), new OperationContext(session, request));
+                    } else {
+                        throw new RuntimeException("Failed to find a required security constraint");
+                    }
+                }
+            }
+
+            return (HashMap<String, Object>) method.invoke(rpcCall.get("object"), new OperationContext(session, request));
+
         } catch (RuntimeException ex) {
-            
-            if(true) {
+
+            if (true) {
                 throw ex;
             }
-            
+
             Logger.getLogger(this.getClass().getName()).log(Level.INFO, ex.getMessage());
-            
+
             HashMap<String, Object> response = new HashMap<String, Object>();
             response.put("success", false);
 
             if (ex instanceof MalformedRequestException) {
                 response.put("errors", new String[]{ex.getMessage()});
-            } else if(ex instanceof SecurityViolationException) {
+            } else if (ex instanceof SecurityViolationException) {
                 response.put("errors", new String[]{"Access Denied"});
             } else {
                 response.put("errors", new String[]{"Unknown Error"});
             }
-            
+
             return response;
         }
     }

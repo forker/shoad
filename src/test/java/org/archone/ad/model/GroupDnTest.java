@@ -5,7 +5,7 @@
 package org.archone.ad.model;
 
 import org.archone.ad.naming.GroupDn;
-import org.archone.ad.naming.NameHelperImpl;
+import org.archone.ad.naming.NameHelper;
 import org.archone.ad.naming.NameHelper;
 import javax.naming.InvalidNameException;
 import org.junit.After;
@@ -24,7 +24,7 @@ public class GroupDnTest {
     private NameHelper dh;
     
     public GroupDnTest() {
-        dh = new NameHelperImpl("ou=users", "ou=groups");
+        dh = new NameHelper("ou=users", "ou=groups");
     }
 
     @BeforeClass

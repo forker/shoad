@@ -20,9 +20,9 @@ public class DomainDn extends LdapName {
             throw new InvalidNameException();
         }
     }
-    
+
     public static DomainDn fromDomain(String domain) throws InvalidNameException {
-        return new DomainDn( parseDomainDn(domain) );
+        return new DomainDn(parseDomainDn(domain));
     }
 
     public String getDomain() {
@@ -40,8 +40,34 @@ public class DomainDn extends LdapName {
         if (("." + domain).matches(domainMatch)) {
             return "dc=" + domain.replaceAll("\\.", ",dc=");
         } else {
-            throw new RuntimeException("Doesn't look like a domain");
+            throw new RuntimeException("Doesn't look like a domain " + domain);
         }
 
     }
+
+    public LdapName getUserNodeDn() throws InvalidNameException {
+        LdapName name = (LdapName) this.clone();
+        name.add("ou=users");
+        return name;
+    }
+
+    public LdapName getGroupNodeDn() throws InvalidNameException {
+        LdapName name = (LdapName) this.clone();
+        name.add("ou=groups");
+        return name;
+    }
+    
+    public LdapName getNewUserDn(String userName) throws InvalidNameException {
+        LdapName name = this.getUserNodeDn();
+        name.add("uid=" + userName);
+        return name;
+    }
+    
+    public LdapName getNewGroupDn(String groupName) throws InvalidNameException {
+        LdapName name = this.getGroupNodeDn();
+        name.add("cn=" + groupName);
+        return name;
+    }
+    
+    
 }

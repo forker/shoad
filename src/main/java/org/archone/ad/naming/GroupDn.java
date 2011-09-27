@@ -36,6 +36,7 @@ public class GroupDn extends LdapName {
         }
     }
 
+
     public String getDomain() {
         StringBuilder domain = new StringBuilder();
 

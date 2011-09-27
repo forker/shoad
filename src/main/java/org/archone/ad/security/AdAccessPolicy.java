@@ -4,11 +4,12 @@
  */
 package org.archone.ad.security;
 
+import org.archone.ad.rpc.SecurityViolationException;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import javax.naming.InvalidNameException;
-import org.archone.ad.authentication.BasicUser;
+import javax.naming.NamingException;
+import org.archone.ad.domain.UserHelper;
 import org.archone.ad.naming.DomainDn;
 import org.archone.ad.naming.GroupDn;
 import org.archone.ad.naming.NameHelper;
@@ -24,28 +25,15 @@ public class AdAccessPolicy {
 
     @Autowired
     private NameHelper nameHelper;
-
-    public List<String> getAdminDomains(BasicUser basicUser) throws InvalidNameException {
-
-        List<String> adminDomains = new LinkedList<String>();
-
-        List<String> groups = basicUser.getGroups();
-
-        for (String group : groups) {
-            if (group != null && GroupDn.isAdminGroupId(group)) {
-                adminDomains.add(nameHelper.newGroupDnFromId(group).getDomain());
-            }
-        }
-
-        return adminDomains;
-    }
+    
+    @Autowired
+    private UserHelper userHelper;
 
     @SecurityConstraint(name = "administrator.by_domain")
-    public void validateEntityAccess(OperationContext opContext) throws InvalidNameException {
+    public void validateEntityAccess(OperationContext opContext) throws InvalidNameException, NamingException {
         
         HashMap<String, Object> params = opContext.getParams();
-        BasicUser basicUser = opContext.getBasicUser();
-
+        
         String domain = null;
 
         if (params.containsKey("domain")) {
@@ -63,7 +51,7 @@ public class AdAccessPolicy {
             domain = userDn.getDomain();
         }
 
-        if (domain != null && !getAdminDomains(basicUser).contains(domain)) {
+        if (domain != null && !userHelper.getAdminDomains().contains(domain)) {
             throw new SecurityViolationException();
         }
 
@@ -71,7 +59,7 @@ public class AdAccessPolicy {
             List<String> groups = (List<String>) params.get("groups");
             for (String group : groups) {
                 GroupDn groupDn = nameHelper.newGroupDnFromId(group);
-                if(!getAdminDomains(basicUser).contains(domain)) {
+                if(!userHelper.isAdminDomain(domain)) {
                     throw new SecurityViolationException(domain + " is forbidden");
                 }
             }

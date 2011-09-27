@@ -2,18 +2,18 @@
  * Content of this file is subject to the license
  * you can find in the enclosed LICENSE.txt file with the project.
  */
-package org.archone.ad.ldap;
+package org.archone.ad.rpc;
 
 /**
  *
  * @author romansergey
  */
-public class InvalidLdapConnectionName extends Exception {
+public class SecurityViolationException extends RuntimeException {
 
-    public InvalidLdapConnectionName() {
+    public SecurityViolationException() {
     }
     
-    public InvalidLdapConnectionName(String message) {
+    public SecurityViolationException(String message) {
         super(message);
     }
     

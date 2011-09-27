@@ -118,7 +118,7 @@
                         
                         rpcService.call({
                             action : "user.list",
-                            data : { domain : currentDomain, "groups" : groups },
+                            data : { domain : currentDomain, "groups" : groups, "attrs" : ["fullName"] },
                             callback : function(data) {
                                 
                                 displayDataTable.fnClearTable();
@@ -404,13 +404,17 @@
                 margin : 0 0 10px 0;
                 background-color: #AAAAAA;
             }
-            
+
             .user-edit-ui-remove {
-                
+
             }
-            
+
             .user-remove-ui {
                 text-align: center;
+            }
+
+            .domain-list {
+                margin: 1em 1em;
             }
 
         </style>
@@ -461,7 +465,7 @@
 
         <div class="template user-edit-dialog" >
             <div class="status-line"></div>
-            
+
             <div class="user-membership-edit-ui-wrap collapsible-wrap">
                 <a class="collapse-control" href="javascript:;">Membership</a>
                 <div class="collapsible user-membership-edit-ui">
@@ -479,6 +483,5 @@
                 </div>
             </div>
         </div>
-
     </body>
 </html>

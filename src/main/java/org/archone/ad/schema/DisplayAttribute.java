@@ -16,6 +16,7 @@ public class DisplayAttribute {
     private String type;
     private String access;
     private String unique;
+    private int showOrderIndex = 0;
     private boolean multiValue = false;
     private boolean domainUnique = false;
     private boolean globallyUnique = false;
@@ -169,6 +170,20 @@ public class DisplayAttribute {
      */
     public void setMustHave(boolean mustHave) {
         this.mustHave = mustHave;
+    }
+
+    /**
+     * @return the showOrderIndex
+     */
+    public int getShowOrderIndex() {
+        return showOrderIndex;
+    }
+
+    /**
+     * @param showOrderIndex the showOrderIndex to set
+     */
+    public void setShowOrderIndex(int showOrderIndex) {
+        this.showOrderIndex = showOrderIndex;
     }
     
     
